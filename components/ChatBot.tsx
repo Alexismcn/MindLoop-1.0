@@ -1,11 +1,12 @@
 "use client";
 
 import { useState, useRef, useEffect, useCallback } from "react";
-import { MessageCircle, X, Send, Minus, Brain, Cloud, Settings } from "lucide-react";
+import { MessageCircle, X, Send, Minus, Brain, Cloud, Settings, Database, DatabaseZap } from "lucide-react";
 import { useI18n } from "@/lib/i18n";
 import { useChatContext } from "@/lib/chat-context";
 import { useAI } from "@/lib/ai-context";
 import { generate } from "@/lib/ai-service";
+import { getResults, getAllMoodEntries, type TestResult, type MoodEntry } from "@/lib/storage";
 
 interface Message {
   role: "user" | "assistant";
@@ -32,18 +33,97 @@ Critical rules:
 
 Always remind users: "I'm an educational assistant, not a substitute for professional care."`;
 
+const DATA_ACCESS_KEY = "mindscope_chat_data";
+
+function avg(arr: (number | undefined)[]): number | null {
+  const v = arr.filter((x): x is number => x !== undefined);
+  return v.length ? Math.round(v.reduce((a, b) => a + b, 0) / v.length * 10) / 10 : null;
+}
+
+function buildDataContext(): string {
+  const results: TestResult[] = getResults();
+  const entries: MoodEntry[]  = getAllMoodEntries();
+
+  // ── Test results: latest per test ─────────────────────────────────────────
+  const latestByTest: Record<string, TestResult> = {};
+  for (const r of results) {
+    if (!latestByTest[r.testId] || r.completedAt > latestByTest[r.testId].completedAt) {
+      latestByTest[r.testId] = r;
+    }
+  }
+  const testLines = Object.values(latestByTest)
+    .sort((a, b) => b.completedAt.localeCompare(a.completedAt))
+    .slice(0, 12)
+    .map(r => {
+      const date = r.completedAt.split("T")[0];
+      return `  - ${r.testName}: ${r.score}/${r.maxScore} — ${r.severityLabel} (${date})`;
+    });
+
+  // ── Mood: last 30 days ────────────────────────────────────────────────────
+  const cutoff = new Date();
+  cutoff.setDate(cutoff.getDate() - 30);
+  const cutStr  = cutoff.toISOString().split("T")[0];
+  const recent  = entries.filter(e => e.date >= cutStr);
+  const avgMood  = avg(recent.map(e => e.mood));
+  const avgSleep = avg(recent.map(e => e.sleep));
+  const avgNrg   = avg(recent.map(e => e.energy));
+  const daysTracked = new Set(recent.map(e => e.date)).size;
+
+  const lastNotes = recent
+    .filter(e => e.note && e.note.trim().length > 10)
+    .slice(-3)
+    .map(e => `  - ${e.date}: "${e.note!.slice(0, 100)}${e.note!.length > 100 ? "..." : ""}"`);
+
+  const sections: string[] = [];
+
+  if (testLines.length > 0) {
+    sections.push(`RECENT TEST RESULTS (latest per assessment):\n${testLines.join("\n")}`);
+  }
+  if (recent.length > 0) {
+    const moodLines = [
+      `Days tracked (last 30d): ${daysTracked}`,
+      avgMood   !== null ? `Average mood: ${avgMood}/10`     : null,
+      avgSleep  !== null ? `Average sleep: ${avgSleep}h`     : null,
+      avgNrg    !== null ? `Average energy: ${avgNrg}/5`     : null,
+    ].filter(Boolean).map(l => `  - ${l}`);
+    sections.push(`MOOD TRACKING (last 30 days):\n${moodLines.join("\n")}`);
+  }
+  if (lastNotes.length > 0) {
+    sections.push(`RECENT JOURNAL NOTES:\n${lastNotes.join("\n")}`);
+  }
+
+  if (sections.length === 0) return "";
+
+  return `\n\n=== USER'S PERSONAL DATA (shared with explicit consent) ===\nUse this context to give more personalised, relevant answers. Do NOT repeat raw numbers back unless asked.\n${sections.join("\n\n")}`;
+}
+
 export function ChatBot() {
   const { t }                       = useI18n();
   const { chatOpen, setChatOpen }   = useChatContext();
   const { mode, status, requestAI, ready, showSetup } = useAI();
 
-  const [minimized, setMinimized] = useState(false);
-  const [messages,  setMessages]  = useState<Message[]>([
+  const [minimized,   setMinimized]   = useState(false);
+  const [messages,    setMessages]    = useState<Message[]>([
     { role: "assistant", content: t.chat.welcome },
   ]);
-  const [input,    setInput]   = useState("");
-  const [loading,  setLoading] = useState(false);
-  const [isMobile, setIsMobile] = useState(false);
+  const [input,      setInput]      = useState("");
+  const [loading,    setLoading]    = useState(false);
+  const [isMobile,   setIsMobile]   = useState(false);
+  const [dataAccess, setDataAccess] = useState<boolean>(() => {
+    if (typeof window === "undefined") return false;
+    return localStorage.getItem(DATA_ACCESS_KEY) === "true";
+  });
+  const [showDataHint, setShowDataHint] = useState(false);
+
+  const toggleDataAccess = useCallback(() => {
+    setDataAccess(prev => {
+      const next = !prev;
+      localStorage.setItem(DATA_ACCESS_KEY, String(next));
+      setShowDataHint(true);
+      setTimeout(() => setShowDataHint(false), 2500);
+      return next;
+    });
+  }, []);
 
   useEffect(() => {
     const check = () => setIsMobile(window.innerWidth < 640);
@@ -113,8 +193,11 @@ export function ChatBot() {
     setMessages(prev => [...prev, { role: "assistant", content: "", streaming: true }]);
 
     try {
+      const systemContent = dataAccess
+        ? SYSTEM_PROMPT + buildDataContext()
+        : SYSTEM_PROMPT;
       const apiMsgs = [
-        { role: "system" as const, content: SYSTEM_PROMPT },
+        { role: "system" as const, content: systemContent },
         ...updated.map(m => ({ role: m.role as "user" | "assistant", content: m.content })),
       ];
 
@@ -143,6 +226,31 @@ export function ChatBot() {
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); sendMessage(); }
   };
+
+  // ── Data access badge ────────────────────────────────────────────────────────
+  const dataToggleBtn = (small = false) => (
+    <div className="relative">
+      <button
+        onClick={e => { e.stopPropagation(); toggleDataAccess(); }}
+        title={dataAccess ? "Données partagées — cliquer pour désactiver" : "Partager mes données avec l'IA"}
+        className={`flex items-center gap-1 rounded-lg px-2 py-1 text-[10px] font-medium transition-colors ${
+          dataAccess
+            ? "bg-emerald-500/20 text-emerald-200 hover:bg-emerald-500/30"
+            : "bg-white/10 text-blue-200/60 hover:bg-white/20 hover:text-blue-200"
+        }`}
+      >
+        {dataAccess
+          ? <DatabaseZap className={`${small ? "h-2.5 w-2.5" : "h-3 w-3"}`} />
+          : <Database    className={`${small ? "h-2.5 w-2.5" : "h-3 w-3"}`} />}
+        {!small && (dataAccess ? "Données ON" : "Données")}
+      </button>
+      {showDataHint && (
+        <div className="absolute bottom-full mb-1.5 right-0 whitespace-nowrap rounded-lg bg-slate-900 text-white text-[10px] px-2 py-1 shadow-lg pointer-events-none z-10">
+          {dataAccess ? "Accès aux données activé" : "Accès aux données désactivé"}
+        </div>
+      )}
+    </div>
+  );
 
   // ── AI status badge ───────────────────────────────────────────────────────────
   const aiBadge = (
@@ -262,6 +370,17 @@ export function ChatBot() {
                   {mode === "local" && <span className="text-[10px] bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 px-1.5 py-0.5 rounded-full font-medium flex items-center gap-0.5"><Brain className="h-2.5 w-2.5" />locale</span>}
                   {mode === "api"   && <span className="text-[10px] bg-slate-100 dark:bg-slate-700 text-slate-500 px-1.5 py-0.5 rounded-full font-medium flex items-center gap-0.5"><Cloud className="h-2.5 w-2.5" />Mistral</span>}
                   {!mode            && <button onClick={requestAI} className="text-[10px] text-blue-500 underline">Configurer IA</button>}
+                  <button
+                    onClick={toggleDataAccess}
+                    className={`text-[10px] px-1.5 py-0.5 rounded-full font-medium flex items-center gap-0.5 transition-colors ${
+                      dataAccess
+                        ? "bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400"
+                        : "bg-slate-100 dark:bg-slate-700 text-slate-400 dark:text-slate-500"
+                    }`}
+                  >
+                    {dataAccess ? <DatabaseZap className="h-2.5 w-2.5" /> : <Database className="h-2.5 w-2.5" />}
+                    {dataAccess ? "Données ON" : "Données"}
+                  </button>
                 </div>
               </div>
             </div>
@@ -312,6 +431,7 @@ export function ChatBot() {
             <div className="flex items-center gap-2 mt-0.5">
               <p className="text-xs opacity-80">{t.chat.subtitle}</p>
               {aiBadge}
+              {dataToggleBtn(true)}
             </div>
           </div>
         </div>
