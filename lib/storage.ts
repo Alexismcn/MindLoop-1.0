@@ -10,6 +10,22 @@ export interface TestResult {
   answers: Record<string, number>;
 }
 
+/** User's saved medication list (global profile) */
+export interface MedicationProfile {
+  medications: string[]; // e.g. ["Sertraline 50mg", "Mélatonine 5mg"]
+}
+
+const MED_PROFILE_KEY = "mindscope_meds";
+
+export function getMedicationProfile(): MedicationProfile {
+  if (typeof window === "undefined") return { medications: [] };
+  try { return JSON.parse(localStorage.getItem(MED_PROFILE_KEY) ?? '{"medications":[]}'); }
+  catch { return { medications: [] }; }
+}
+export function saveMedicationProfile(profile: MedicationProfile): void {
+  localStorage.setItem(MED_PROFILE_KEY, JSON.stringify(profile));
+}
+
 /** One mood snapshot — multiple allowed per day */
 export interface MoodEntry {
   id: string;          // unique per entry
@@ -22,11 +38,14 @@ export interface MoodEntry {
   note?: string;
 
   // Behaviours
-  alcohol?: number;       // standard drinks
-  substances?: number;    // 0-3
+  alcohol?: number;
+  substances?: number;
   substanceNote?: string;
   riskBehavior?: boolean;
   riskNote?: string;
+
+  // Medications
+  medicationsTaken?: Record<string, boolean>; // medName → taken?
 }
 
 /** Entries for one calendar day (grouped) */

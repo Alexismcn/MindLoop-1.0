@@ -83,8 +83,13 @@ export interface Translations {
     substanceOpts: [string, string, string, string];
     riskLabel: string; riskNote: string;
     riskYes: string; riskNo: string;
+    // Medications
+    medTitle: string; medManage: string; medAdd: string; medSave: string;
+    medRemove: string; medEmpty: string; medPlaceholder: string;
+    medTaken: string; medNotTaken: string; medSectionTitle: string;
     // Report
     reportTitle: string; reportGenerate: string;
+    reportForTherapist: string; reportForSelf: string; reportTypeLabel: string;
     reportPeriod1w: string; reportPeriod1m: string; reportPeriod1y: string;
     reportFrom: string; reportTo: string;
     reportDaysTracked: string; reportAvg: string; reportMin: string; reportMax: string;
@@ -218,12 +223,18 @@ const en: Translations = {
     appetiteOpts: ["Very low", "Low", "Normal", "Good", "Excellent"],
     energyOpts: ["Exhausted", "Tired", "Okay", "Good", "Full of energy"],
     hoursUnit: "h",
+    medTitle: "Medication", medManage: "Manage medications", medAdd: "Add",
+    medSave: "Save list", medRemove: "Remove", medEmpty: "No medication saved yet.",
+    medPlaceholder: "e.g. Sertraline 50mg", medTaken: "Taken", medNotTaken: "Not taken",
+    medSectionTitle: "Treatment",
     behaviourTitle: "Behaviours (optional)",
     alcoholLabel: "Alcohol", alcoholDrinks: "drinks", alcoholNone: "None",
     substancesLabel: "Substances", substancesNote: "Note (optional)",
     substanceOpts: ["None", "Light", "Moderate", "Heavy"],
     riskLabel: "Risk-taking behaviour", riskNote: "Describe (optional)",
     riskYes: "Yes", riskNo: "No",
+    reportForTherapist: "For my therapist", reportForSelf: "For myself",
+    reportTypeLabel: "Report recipient",
     reportTitle: "Wellness Report", reportGenerate: "Generate report",
     reportPeriod1w: "1 week", reportPeriod1m: "1 month", reportPeriod1y: "1 year",
     reportFrom: "From", reportTo: "to",
@@ -362,12 +373,18 @@ const fr: Translations = {
     appetiteOpts: ["Très faible", "Faible", "Normal", "Bon", "Excellent"],
     energyOpts: ["Épuisé(e)", "Fatigué(e)", "Correct", "Bien", "Plein(e) d'énergie"],
     hoursUnit: "h",
+    medTitle: "Médicament", medManage: "Gérer mes médicaments", medAdd: "Ajouter",
+    medSave: "Enregistrer", medRemove: "Supprimer", medEmpty: "Aucun traitement enregistré.",
+    medPlaceholder: "ex: Sertraline 50mg", medTaken: "Pris", medNotTaken: "Non pris",
+    medSectionTitle: "Traitement",
     behaviourTitle: "Comportements (optionnel)",
     alcoholLabel: "Alcool", alcoholDrinks: "verres", alcoholNone: "Aucun",
     substancesLabel: "Substances", substancesNote: "Note (optionnel)",
     substanceOpts: ["Aucune", "Légère", "Modérée", "Importante"],
     riskLabel: "Comportement à risque", riskNote: "Décrire (optionnel)",
     riskYes: "Oui", riskNo: "Non",
+    reportForTherapist: "Pour mon thérapeute", reportForSelf: "Pour moi",
+    reportTypeLabel: "Destinataire du rapport",
     reportTitle: "Rapport de suivi", reportGenerate: "Générer le rapport",
     reportPeriod1w: "1 semaine", reportPeriod1m: "1 mois", reportPeriod1y: "1 an",
     reportFrom: "Du", reportTo: "au",
@@ -512,6 +529,12 @@ const es: Translations = {
     substanceOpts: ["Ninguna", "Ligera", "Moderada", "Intensa"],
     riskLabel: "Comportamiento de riesgo", riskNote: "Describir (opcional)",
     riskYes: "Sí", riskNo: "No",
+    medTitle: "Medicamento", medManage: "Gestionar medicamentos", medAdd: "Añadir",
+    medSave: "Guardar lista", medRemove: "Eliminar", medEmpty: "Ningún tratamiento registrado.",
+    medPlaceholder: "ej: Sertralina 50mg", medTaken: "Tomado", medNotTaken: "No tomado",
+    medSectionTitle: "Tratamiento",
+    reportForTherapist: "Para mi terapeuta", reportForSelf: "Para mí",
+    reportTypeLabel: "Destinatario del informe",
     reportTitle: "Informe de seguimiento", reportGenerate: "Generar informe",
     reportPeriod1w: "1 semana", reportPeriod1m: "1 mes", reportPeriod1y: "1 año",
     reportFrom: "Del", reportTo: "al",
@@ -656,6 +679,12 @@ const zh: Translations = {
     substanceOpts: ["无", "轻度", "中度", "重度"],
     riskLabel: "冒险行为", riskNote: "描述（可选）",
     riskYes: "是", riskNo: "否",
+    medTitle: "药物", medManage: "管理药物", medAdd: "添加",
+    medSave: "保存列表", medRemove: "删除", medEmpty: "暂无已记录的药物。",
+    medPlaceholder: "例: 舍曲林 50mg", medTaken: "已服用", medNotTaken: "未服用",
+    medSectionTitle: "治疗",
+    reportForTherapist: "给我的治疗师", reportForSelf: "给自己",
+    reportTypeLabel: "报告收件人",
     reportTitle: "健康追踪报告", reportGenerate: "生成报告",
     reportPeriod1w: "1周", reportPeriod1m: "1个月", reportPeriod1y: "1年",
     reportFrom: "从", reportTo: "至",

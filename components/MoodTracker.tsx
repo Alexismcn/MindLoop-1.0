@@ -4,7 +4,8 @@ import { useState, useEffect, useCallback } from "react";
 import {
   saveMoodEntry, deleteMoodEntry, clearAllMood,
   getTodayEntries, getDailyLogs, migrateLegacyMoodData,
-  MoodEntry, DailyLog,
+  getMedicationProfile, saveMedicationProfile,
+  MoodEntry, DailyLog, MedicationProfile,
 } from "@/lib/storage";
 import { useI18n, tf } from "@/lib/i18n";
 import {
@@ -14,7 +15,7 @@ import {
 import {
   Moon, Utensils, Zap, BookOpen, ChevronDown, ChevronUp,
   Trash2, Wine, Pill, AlertTriangle, Plus, Minus, Clock,
-  PlusCircle, Edit2, X,
+  PlusCircle, Edit2, X, Settings,
 } from "lucide-react";
 
 // ── constants ──────────────────────────────────────────────────────────────────
@@ -141,24 +142,33 @@ interface FormState {
   substanceNote: string;
   riskBehavior: boolean | null;
   riskNote: string;
+  medicationsTaken: Record<string, boolean>;
   showBehaviours: boolean;
+  showMeds: boolean;
 }
 
 const emptyForm = (): FormState => ({
   id: undefined,
   mood: null, sleep: null, appetite: null, energy: null, note: "",
   alcohol: 0, substances: null, substanceNote: "",
-  riskBehavior: null, riskNote: "", showBehaviours: false,
+  riskBehavior: null, riskNote: "",
+  medicationsTaken: {},
+  showBehaviours: false,
+  showMeds: false,
 });
 
-function EntryForm({ form, setForm, onSave, onCancel, t }: {
+function EntryForm({ form, setForm, onSave, onCancel, onManageMeds, medProfile, t }: {
   form: FormState;
   setForm: (f: FormState) => void;
   onSave: () => void;
   onCancel: () => void;
+  onManageMeds: () => void;
+  medProfile: MedicationProfile;
   t: ReturnType<typeof useI18n>["t"];
 }) {
   const up = (partial: Partial<FormState>) => setForm({ ...form, ...partial });
+  const takenCount = Object.values(form.medicationsTaken).filter(Boolean).length;
+  const totalMeds  = medProfile.medications.length;
 
   return (
     <div className="space-y-5">
@@ -202,6 +212,77 @@ function EntryForm({ form, setForm, onSave, onCancel, t }: {
         <textarea value={form.note} onChange={(e) => up({ note: e.target.value })}
           placeholder={t.mood.journalPlaceholder} rows={3}
           className="w-full rounded-xl border border-slate-200 dark:border-slate-600 bg-slate-50 dark:bg-slate-700 px-4 py-3 text-sm text-slate-700 dark:text-slate-300 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none" />
+      </div>
+
+      {/* Medications collapsible */}
+      <div className="border border-slate-200 dark:border-slate-700 rounded-xl overflow-hidden">
+        <button onClick={() => up({ showMeds: !form.showMeds })}
+          className="w-full flex items-center justify-between px-4 py-3 bg-slate-50 dark:bg-slate-700/50 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors">
+          <div className="flex items-center gap-2">
+            <Pill className="h-4 w-4 text-purple-400" />
+            <span className="text-sm font-medium text-slate-600 dark:text-slate-300">{t.mood.medSectionTitle}</span>
+            {totalMeds > 0 && (
+              <span className={`text-xs px-1.5 py-0.5 rounded-full font-medium ${
+                takenCount === totalMeds && totalMeds > 0
+                  ? "bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400"
+                  : takenCount > 0
+                  ? "bg-yellow-100 dark:bg-yellow-900/30 text-yellow-700 dark:text-yellow-400"
+                  : "bg-slate-100 dark:bg-slate-700 text-slate-500"}`}>
+                {takenCount}/{totalMeds}
+              </span>
+            )}
+          </div>
+          {form.showMeds ? <ChevronUp className="h-4 w-4 text-slate-400" /> : <ChevronDown className="h-4 w-4 text-slate-400" />}
+        </button>
+
+        {form.showMeds && (
+          <div className="p-4">
+            {totalMeds === 0 ? (
+              <div className="text-center py-2">
+                <p className="text-xs text-slate-400 dark:text-slate-500 mb-3">{t.mood.medEmpty}</p>
+                <button onClick={onManageMeds}
+                  className="text-xs text-blue-500 dark:text-blue-400 hover:underline font-medium">
+                  + {t.mood.medManage}
+                </button>
+              </div>
+            ) : (
+              <div className="space-y-2.5">
+                {medProfile.medications.map((med) => {
+                  const taken = form.medicationsTaken[med];
+                  return (
+                    <div key={med} className="flex items-center gap-2">
+                      <Pill className="h-3.5 w-3.5 text-purple-400 flex-shrink-0" />
+                      <span className="flex-1 text-sm text-slate-700 dark:text-slate-300 truncate">{med}</span>
+                      <div className="flex gap-1.5 flex-shrink-0">
+                        <button
+                          onClick={() => up({ medicationsTaken: { ...form.medicationsTaken, [med]: true } })}
+                          className={`px-2.5 py-1 rounded-lg text-xs font-medium border-2 transition-all active:scale-95 ${
+                            taken === true
+                              ? "border-green-400 bg-green-50 dark:bg-green-900/20 text-green-600 dark:text-green-400"
+                              : "border-slate-200 dark:border-slate-600 text-slate-400 hover:border-green-300 dark:hover:border-green-700"}`}>
+                          {t.mood.medTaken}
+                        </button>
+                        <button
+                          onClick={() => up({ medicationsTaken: { ...form.medicationsTaken, [med]: false } })}
+                          className={`px-2.5 py-1 rounded-lg text-xs font-medium border-2 transition-all active:scale-95 ${
+                            taken === false
+                              ? "border-red-400 bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400"
+                              : "border-slate-200 dark:border-slate-600 text-slate-400 hover:border-red-300 dark:hover:border-red-700"}`}>
+                          {t.mood.medNotTaken}
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })}
+                <button onClick={onManageMeds}
+                  className="mt-1 flex items-center gap-1.5 text-xs text-slate-400 hover:text-blue-500 dark:hover:text-blue-400 transition-colors">
+                  <Settings className="h-3 w-3" />
+                  {t.mood.medManage}
+                </button>
+              </div>
+            )}
+          </div>
+        )}
       </div>
 
       {/* Behaviours collapsible */}
@@ -311,6 +392,12 @@ function TodayTimeline({ entries, onEdit, onDelete, t }: {
               {e.energy   != null && <span className="text-sm">{energyEmojis[e.energy - 1]}</span>}
               {e.alcohol  != null && e.alcohol > 0 && <span className="flex items-center gap-1 text-xs text-amber-600"><Wine className="h-3 w-3" />{e.alcohol}</span>}
               {e.riskBehavior === true && <AlertTriangle className="h-3.5 w-3.5 text-red-500" />}
+              {e.medicationsTaken && Object.keys(e.medicationsTaken).length > 0 && (
+                <span className="flex items-center gap-1 text-xs text-purple-500">
+                  <Pill className="h-3 w-3" />
+                  {Object.values(e.medicationsTaken).filter(Boolean).length}/{Object.keys(e.medicationsTaken).length}
+                </span>
+              )}
             </div>
             {e.note && <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 line-clamp-2">{e.note}</p>}
           </div>
@@ -379,6 +466,20 @@ function DayLogCard({ log, locale, t }: { log: DailyLog; locale: string; t: Retu
                 {e.substances != null && <MiniMetric icon={<Pill className="h-4 w-4 text-purple-400" />} label={t.mood.substancesLabel} value={t.mood.substanceOpts[e.substances]} />}
                 {e.riskBehavior != null && <MiniMetric icon={<AlertTriangle className={`h-4 w-4 ${e.riskBehavior ? "text-red-400" : "text-green-400"}`} />} label={t.mood.riskLabel} value={e.riskBehavior ? t.mood.riskYes : t.mood.riskNo} />}
               </div>
+              {/* Medication adherence */}
+              {e.medicationsTaken && Object.keys(e.medicationsTaken).length > 0 && (
+                <div className="mt-2 flex flex-wrap gap-1.5">
+                  {Object.entries(e.medicationsTaken).map(([med, taken]) => (
+                    <span key={med} className={`inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded-full font-medium ${
+                      taken ? "bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400"
+                            : "bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400"}`}>
+                      <Pill className="h-2.5 w-2.5" />
+                      {med.length > 20 ? med.slice(0, 18) + "…" : med}
+                      {taken ? " ✓" : " ✗"}
+                    </span>
+                  ))}
+                </div>
+              )}
               {e.note && (
                 <div className="mt-3 p-3 rounded-xl bg-white dark:bg-slate-800 border border-slate-100 dark:border-slate-700">
                   <div className="flex items-center gap-1.5 mb-1"><BookOpen className="h-3.5 w-3.5 text-slate-400" /><p className="text-xs text-slate-400">{t.mood.journalLabel}</p></div>
@@ -402,15 +503,96 @@ function MiniMetric({ icon, label, value }: { icon: React.ReactNode; label: stri
   );
 }
 
+// ── Medication Manager ─────────────────────────────────────────────────────────
+
+function MedManager({ medProfile, onUpdate, onClose, t }: {
+  medProfile: MedicationProfile;
+  onUpdate: (profile: MedicationProfile) => void;
+  onClose: () => void;
+  t: ReturnType<typeof useI18n>["t"];
+}) {
+  const [newMed, setNewMed] = useState("");
+
+  const addMed = () => {
+    const med = newMed.trim();
+    if (!med || medProfile.medications.includes(med)) return;
+    const updated = { medications: [...medProfile.medications, med] };
+    saveMedicationProfile(updated);
+    onUpdate(updated);
+    setNewMed("");
+  };
+
+  const removeMed = (med: string) => {
+    const updated = { medications: medProfile.medications.filter(m => m !== med) };
+    saveMedicationProfile(updated);
+    onUpdate(updated);
+  };
+
+  return (
+    <div className="rounded-2xl bg-white dark:bg-slate-800 border border-purple-200 dark:border-purple-800 overflow-hidden">
+      {/* Header */}
+      <div className="flex items-center justify-between px-5 py-4 bg-gradient-to-r from-purple-600 to-indigo-600">
+        <div className="flex items-center gap-2">
+          <Pill className="h-5 w-5 text-white" />
+          <h3 className="font-semibold text-white">{t.mood.medTitle}</h3>
+        </div>
+        <button onClick={onClose} className="text-white/70 hover:text-white transition-colors">
+          <X className="h-5 w-5" />
+        </button>
+      </div>
+
+      <div className="p-5">
+        {/* Add new */}
+        <div className="flex gap-2 mb-5">
+          <input
+            value={newMed}
+            onChange={(e) => setNewMed(e.target.value)}
+            placeholder={t.mood.medPlaceholder}
+            onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); addMed(); } }}
+            className="flex-1 rounded-xl border border-slate-200 dark:border-slate-600 bg-slate-50 dark:bg-slate-700 px-3 py-2.5 text-sm text-slate-700 dark:text-slate-300 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-purple-500" />
+          <button onClick={addMed} disabled={!newMed.trim()}
+            className="px-4 py-2.5 rounded-xl text-sm font-semibold bg-purple-600 hover:bg-purple-700 text-white disabled:opacity-40 transition-all active:scale-95">
+            {t.mood.medAdd}
+          </button>
+        </div>
+
+        {/* List */}
+        {medProfile.medications.length === 0 ? (
+          <div className="text-center py-6">
+            <Pill className="h-8 w-8 text-slate-300 dark:text-slate-600 mx-auto mb-2" />
+            <p className="text-sm text-slate-400 dark:text-slate-500">{t.mood.medEmpty}</p>
+          </div>
+        ) : (
+          <div className="space-y-2">
+            {medProfile.medications.map((med) => (
+              <div key={med}
+                className="flex items-center gap-3 p-3 rounded-xl bg-purple-50 dark:bg-purple-900/10 border border-purple-100 dark:border-purple-800/30">
+                <Pill className="h-4 w-4 text-purple-400 flex-shrink-0" />
+                <span className="flex-1 text-sm text-slate-700 dark:text-slate-200 font-medium">{med}</span>
+                <button onClick={() => removeMed(med)}
+                  className="p-1.5 text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors">
+                  <Trash2 className="h-3.5 w-3.5" />
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
 // ── Main component ─────────────────────────────────────────────────────────────
 
 export function MoodTracker() {
   const { t, lang } = useI18n();
-  const [todayEntries, setTodayEntries] = useState<MoodEntry[]>([]);
-  const [logs,         setLogs]         = useState<DailyLog[]>([]);
-  const [form,         setForm]         = useState<FormState>(emptyForm());
-  const [showForm,     setShowForm]     = useState(false);
-  const [confirmClear, setConfirmClear] = useState(false);
+  const [todayEntries,   setTodayEntries]   = useState<MoodEntry[]>([]);
+  const [logs,           setLogs]           = useState<DailyLog[]>([]);
+  const [form,           setForm]           = useState<FormState>(emptyForm());
+  const [showForm,       setShowForm]       = useState(false);
+  const [confirmClear,   setConfirmClear]   = useState(false);
+  const [medProfile,     setMedProfile]     = useState<MedicationProfile>({ medications: [] });
+  const [showMedManager, setShowMedManager] = useState(false);
 
   const locale = lang === "zh" ? "zh-CN" : lang === "es" ? "es-ES" : lang === "fr" ? "fr-FR" : "en-US";
 
@@ -421,34 +603,35 @@ export function MoodTracker() {
   }, []);
 
   useEffect(() => {
-    migrateLegacyMoodData(); // silent migration from old format
+    migrateLegacyMoodData();
     const today = getTodayEntries();
     setTodayEntries(today);
     setLogs(getDailyLogs());
-    // Show form open if no entries yet today (first entry of the day)
     setShowForm(today.length === 0);
+    setMedProfile(getMedicationProfile());
   }, []);
 
   const handleSave = () => {
     if (form.mood === null) return;
     const dt = nowDatetime();
     saveMoodEntry({
-      id:            form.id,
-      datetime:      form.id ? (todayEntries.find(e => e.id === form.id)?.datetime ?? dt) : dt,
-      date:          todayISO(),
-      mood:          form.mood,
-      sleep:         form.sleep ?? undefined,
-      appetite:      form.appetite ?? undefined,
-      energy:        form.energy ?? undefined,
-      note:          form.note.trim() || undefined,
-      alcohol:       form.alcohol > 0 ? form.alcohol : undefined,
-      substances:    form.substances !== null ? form.substances : undefined,
-      substanceNote: form.substanceNote.trim() || undefined,
-      riskBehavior:  form.riskBehavior !== null ? form.riskBehavior : undefined,
-      riskNote:      form.riskNote.trim() || undefined,
+      id:               form.id,
+      datetime:         form.id ? (todayEntries.find(e => e.id === form.id)?.datetime ?? dt) : dt,
+      date:             todayISO(),
+      mood:             form.mood,
+      sleep:            form.sleep ?? undefined,
+      appetite:         form.appetite ?? undefined,
+      energy:           form.energy ?? undefined,
+      note:             form.note.trim() || undefined,
+      alcohol:          form.alcohol > 0 ? form.alcohol : undefined,
+      substances:       form.substances !== null ? form.substances : undefined,
+      substanceNote:    form.substanceNote.trim() || undefined,
+      riskBehavior:     form.riskBehavior !== null ? form.riskBehavior : undefined,
+      riskNote:         form.riskNote.trim() || undefined,
+      medicationsTaken: Object.keys(form.medicationsTaken).length > 0 ? form.medicationsTaken : undefined,
     });
     setForm(emptyForm());
-    setShowForm(false); // after saving, hide form — user clicks "add new" to log again
+    setShowForm(false);
     reload();
   };
 
@@ -459,7 +642,9 @@ export function MoodTracker() {
       note: e.note ?? "",
       alcohol: e.alcohol ?? 0, substances: e.substances ?? null, substanceNote: e.substanceNote ?? "",
       riskBehavior: e.riskBehavior ?? null, riskNote: e.riskNote ?? "",
+      medicationsTaken: e.medicationsTaken ?? {},
       showBehaviours: !!(e.alcohol || e.substances || e.riskBehavior != null),
+      showMeds: !!(e.medicationsTaken && Object.keys(e.medicationsTaken).length > 0),
     });
     setShowForm(true);
     setTimeout(() => window.scrollTo({ top: 0, behavior: "smooth" }), 50);
@@ -510,25 +695,38 @@ export function MoodTracker() {
               form={form}
               setForm={setForm}
               onSave={handleSave}
+              onManageMeds={() => setShowMedManager(true)}
+              medProfile={medProfile}
               onCancel={() => {
                 setForm(emptyForm());
-                // Only allow cancel if there's already at least one entry today
                 if (todayEntries.length > 0) setShowForm(false);
               }}
               t={t}
             />
           ) : (
-            /* Shown after the first entry of the day is saved */
             <button
               onClick={() => { setForm(emptyForm()); setShowForm(true); }}
               className="w-full flex items-center justify-center gap-2 py-3 rounded-xl border-2 border-dashed border-blue-300 dark:border-blue-700 text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-all active:scale-[0.98] font-medium text-sm"
             >
               <PlusCircle className="h-5 w-5" />
-              Mon humeur a changé — ajouter une entrée
+              {lang === "fr" ? "Mon humeur a changé — ajouter une entrée"
+               : lang === "es" ? "Mi estado de ánimo cambió — añadir entrada"
+               : lang === "zh" ? "我的心情变了 — 添加记录"
+               : "My mood changed — add an entry"}
             </button>
           )}
         </div>
       </div>
+
+      {/* ── Medication Manager ───────────────────────────────────────────── */}
+      {showMedManager && (
+        <MedManager
+          medProfile={medProfile}
+          onUpdate={(p) => setMedProfile(p)}
+          onClose={() => setShowMedManager(false)}
+          t={t}
+        />
+      )}
 
       {/* ── Chart ───────────────────────────────────────────────────────── */}
       {chartData.length > 1 && (
