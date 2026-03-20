@@ -65,8 +65,16 @@ body {
 @media screen and (max-width: 640px) {
   input, textarea, select, button {
     font-size: 16px !important;
+    line-height: 1.5 !important;
   }
-  /* Prevent text selection zoom on iOS */
+  /* Disable text size adjustment on rotate */
+  textarea {
+    -webkit-text-size-adjust: 100% !important;
+    -ms-text-size-adjust: 100% !important;
+    text-size-adjust: 100% !important;
+    /* Prevent accidental zoom on triple-click */
+    -webkit-user-select: text !important;
+  }
   input::selection,
   textarea::selection {
     background-color: rgba(59, 130, 246, 0.3);
@@ -76,6 +84,7 @@ body {
 /* Disable iOS pinch-zoom but keep double-tap */
 body {
   touch-action: manipulation;
+  -webkit-text-size-adjust: 100%;
 }
 
 /* Custom scrollbar (desktop) */
