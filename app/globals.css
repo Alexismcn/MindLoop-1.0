@@ -63,9 +63,19 @@ body {
 
 /* Prevent iOS auto-zoom on input focus (requires font-size >= 16px) */
 @media screen and (max-width: 640px) {
-  input, textarea, select {
+  input, textarea, select, button {
     font-size: 16px !important;
   }
+  /* Prevent text selection zoom on iOS */
+  input::selection,
+  textarea::selection {
+    background-color: rgba(59, 130, 246, 0.3);
+  }
+}
+
+/* Disable iOS pinch-zoom but keep double-tap */
+body {
+  touch-action: manipulation;
 }
 
 /* Custom scrollbar (desktop) */

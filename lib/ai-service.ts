@@ -41,7 +41,9 @@ export function getSavedMode(): AIMode | null {
   try { return localStorage.getItem(STORAGE_KEY) as AIMode | null; } catch { return null; }
 }
 export function saveMode(mode: AIMode) {
-  try { localStorage.setItem(STORAGE_KEY, mode); } catch {}
+  // iOS cannot use local mode — force API even if user tries to select local
+  const finalMode = mode === "local" && !hasWebGPU() ? "api" : mode;
+  try { localStorage.setItem(STORAGE_KEY, finalMode); } catch {}
 }
 export function clearMode() {
   try { localStorage.removeItem(STORAGE_KEY); } catch {}

@@ -132,6 +132,16 @@ export function ChatBot() {
     return () => window.removeEventListener("resize", check);
   }, []);
 
+  // Lock body scroll when chat is open on mobile
+  useEffect(() => {
+    if (isMobile && chatOpen) {
+      document.documentElement.style.overflow = "hidden";
+      return () => {
+        document.documentElement.style.overflow = "";
+      };
+    }
+  }, [isMobile, chatOpen]);
+
   // Desktop drag state
   const [position,   setPosition]   = useState({ x: 0, y: 0 });
   const [isDragging, setIsDragging] = useState(false);
@@ -352,24 +362,24 @@ export function ChatBot() {
       <>
         <div className="fixed inset-0 bg-black/40 z-[9998]" onClick={() => setChatOpen(false)} />
         <div
-          className="fixed inset-x-0 bottom-0 z-[9999] flex flex-col rounded-t-3xl bg-white dark:bg-slate-800 shadow-2xl animate-sheet-up"
-          style={{ height: "92dvh", maxHeight: "92dvh" }}
+          className="fixed inset-x-0 bottom-14 z-[9999] flex flex-col rounded-t-3xl bg-white dark:bg-slate-800 shadow-2xl animate-sheet-up"
+          style={{ maxHeight: "calc(100dvh - 3.5rem)", overflow: "hidden" }}
         >
           <div className="flex justify-center pt-3 pb-1 flex-shrink-0">
             <div className="w-10 h-1 rounded-full bg-slate-300 dark:bg-slate-600" />
           </div>
           <div className="flex items-center justify-between px-5 py-3 flex-shrink-0 border-b border-slate-100 dark:border-slate-700">
-            <div className="flex items-center gap-3">
-              <div className="h-9 w-9 rounded-full bg-blue-600 flex items-center justify-center">
+            <div className="flex items-center gap-3 min-w-0">
+              <div className="h-9 w-9 rounded-full bg-blue-600 flex items-center justify-center flex-shrink-0">
                 <MessageCircle className="h-5 w-5 text-white" />
               </div>
-              <div>
+              <div className="min-w-0">
                 <p className="font-semibold text-slate-900 dark:text-slate-100 text-base leading-none">{t.chat.title}</p>
-                <div className="flex items-center gap-2 mt-0.5">
+                <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
                   <p className="text-xs text-slate-500 dark:text-slate-400">{t.chat.subtitle}</p>
-                  {mode === "local" && <span className="text-[10px] bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 px-1.5 py-0.5 rounded-full font-medium flex items-center gap-0.5"><Brain className="h-2.5 w-2.5" />locale</span>}
-                  {mode === "api"   && <span className="text-[10px] bg-slate-100 dark:bg-slate-700 text-slate-500 px-1.5 py-0.5 rounded-full font-medium flex items-center gap-0.5"><Cloud className="h-2.5 w-2.5" />Mistral</span>}
-                  {!mode            && <button onClick={requestAI} className="text-[10px] text-blue-500 underline">Configurer IA</button>}
+                  {mode === "local" && <span className="text-[10px] bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 px-1.5 py-0.5 rounded-full font-medium flex items-center gap-0.5 flex-shrink-0"><Brain className="h-2.5 w-2.5" />locale</span>}
+                  {mode === "api"   && <span className="text-[10px] bg-slate-100 dark:bg-slate-700 text-slate-500 px-1.5 py-0.5 rounded-full font-medium flex items-center gap-0.5 flex-shrink-0"><Cloud className="h-2.5 w-2.5" />Mistral</span>}
+                  {!mode            && <button onClick={requestAI} className="text-[10px] text-blue-500 underline flex-shrink-0">Configurer IA</button>}
                   <button
                     onClick={toggleDataAccess}
                     className={`text-[10px] px-1.5 py-0.5 rounded-full font-medium flex items-center gap-0.5 transition-colors ${
