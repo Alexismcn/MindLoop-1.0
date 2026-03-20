@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { getResults, deleteResult, clearAllResults, TestResult } from "@/lib/storage";
 import { MoodTracker } from "@/components/MoodTracker";
+import { ReportGenerator } from "@/components/ReportGenerator";
 import { Trash2, BarChart2, Calendar, AlertCircle } from "lucide-react";
 import Link from "next/link";
 import { tests } from "@/data/tests";
@@ -195,7 +196,12 @@ export default function HistoryPage() {
         </div>
       )}
 
-      {activeTab === "mood" && <MoodTracker />}
+      {activeTab === "mood" && (
+        <div className="space-y-6">
+          <MoodTracker />
+          <ReportGenerator />
+        </div>
+      )}
     </div>
   );
 }
