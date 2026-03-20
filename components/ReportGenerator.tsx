@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { getDailyLogsRange, MoodEntry, DailyLog } from "@/lib/storage";
 import { useI18n } from "@/lib/i18n";
+import { generate } from "@/lib/ai-service";
 import {
   FileText, Download, Calendar, Sparkles, Brain, BarChart2,
   UserRound, Stethoscope,
@@ -11,9 +12,6 @@ import {
 type Period     = "1w" | "1m" | "1y";
 type Step       = "idle" | "data" | "ai" | "pdf" | "done";
 type ReportType = "therapist" | "self";
-
-const MISTRAL_API_KEY = "2LitVaCxXcwT2RYBz63xKEoPxGHcgAKJ";
-const MISTRAL_URL     = "https://api.mistral.ai/v1/chat/completions";
 
 // ── helpers ────────────────────────────────────────────────────────────────────
 function isoToday()  { return new Date().toISOString().split("T")[0]; }
@@ -171,27 +169,15 @@ ${notes || "  No notes recorded."}
 }
 
 // ── AI call ────────────────────────────────────────────────────────────────────
-async function callMistral(prompt: string, reportType: ReportType): Promise<string> {
+async function callAI(prompt: string, reportType: ReportType): Promise<string> {
   const systemPrompt = reportType === "therapist"
     ? "You are a professional mental health data analyst. You produce formal, clinical wellness reports in the third person for therapists and healthcare providers. You never diagnose. You are objective, precise, and evidence-based."
     : "You are a warm, supportive personal wellness companion. You write encouraging, personal wellness summaries in the second person for individuals tracking their wellbeing. You never diagnose. You are empathetic, positive, and gently constructive.";
 
-  const res = await fetch(MISTRAL_URL, {
-    method:  "POST",
-    headers: { "Content-Type": "application/json", Authorization: `Bearer ${MISTRAL_API_KEY}` },
-    body: JSON.stringify({
-      model: "mistral-small-latest",
-      messages: [
-        { role: "system", content: systemPrompt },
-        { role: "user",   content: prompt },
-      ],
-      temperature: 0.65,
-      max_tokens:  1400,
-    }),
-  });
-  if (!res.ok) throw new Error(`Mistral API error ${res.status}`);
-  const data = await res.json();
-  return data.choices?.[0]?.message?.content ?? "";
+  return generate([
+    { role: "system", content: systemPrompt },
+    { role: "user",   content: prompt },
+  ]);
 }
 
 // ── PDF helpers ─────────────────────────────────────────────────────────────────
@@ -356,7 +342,7 @@ export function ReportGenerator() {
       if (entries.length > 0) {
         try {
           const prompt = buildPrompt(entries, dailyLogs, startDate, endDate, lang, `${periodDays[period]} days`, reportType);
-          aiAnalysis = await callMistral(prompt, reportType);
+          aiAnalysis = await callAI(prompt, reportType);
         } catch {
           aiAnalysis = lang === "fr"
             ? "L'analyse IA n'a pas pu être générée. Veuillez vérifier votre connexion internet."

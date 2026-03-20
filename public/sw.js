@@ -1,5 +1,5 @@
-// MindLoop Service Worker — v2
-const CACHE = "mindloop-v2";
+// MindScope Service Worker — v2
+const CACHE = "mindscope-v2";
 
 // App shell — pages to cache on install
 const SHELL = [

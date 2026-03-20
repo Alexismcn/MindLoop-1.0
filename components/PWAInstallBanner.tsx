@@ -12,7 +12,7 @@
 import { useEffect, useRef, useState } from "react";
 import { X, Download, Share2, ArrowUpFromLine } from "lucide-react";
 
-const STORAGE_KEY  = "mindloop_pwa";
+const STORAGE_KEY  = "mindscope_pwa";
 const DISMISS_DAYS = 30;  // re-show after 30 days of dismissal
 
 interface PWAState {
@@ -154,7 +154,7 @@ export function PWAInstallBanner() {
               {/* App icon */}
               <div className="flex-shrink-0 h-12 w-12 rounded-xl overflow-hidden border border-slate-100 dark:border-slate-700 shadow">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src={`${base}/icon.svg`} alt="MindLoop" className="h-full w-full" />
+                <img src={`${base}/icon.svg`} alt="MindScope" className="h-full w-full" />
               </div>
 
               <div className="flex-1 min-w-0">
@@ -162,7 +162,7 @@ export function PWAInstallBanner() {
                   Ouvrir dans Safari
                 </p>
                 <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5 leading-snug">
-                  Pour installer MindLoop sur votre écran d&rsquo;accueil, vous devez ouvrir ce lien dans <strong>Safari</strong>.
+                  Pour installer MindScope sur votre écran d&rsquo;accueil, vous devez ouvrir ce lien dans <strong>Safari</strong>.
                 </p>
               </div>
 
@@ -216,12 +216,12 @@ export function PWAInstallBanner() {
             <div className="flex items-start gap-3">
               <div className="flex-shrink-0 h-12 w-12 rounded-xl overflow-hidden border border-slate-100 dark:border-slate-700 shadow">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src={`${base}/icon.svg`} alt="MindLoop" className="h-full w-full" />
+                <img src={`${base}/icon.svg`} alt="MindScope" className="h-full w-full" />
               </div>
 
               <div className="flex-1 min-w-0">
                 <p className="font-semibold text-slate-800 dark:text-slate-100 text-sm">
-                  Installer MindLoop
+                  Installer MindScope
                 </p>
                 <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5 leading-snug">
                   Accès rapide depuis votre écran d&rsquo;accueil, fonctionne même hors ligne.
@@ -282,11 +282,11 @@ export function PWAInstallBanner() {
         <div className="flex items-center gap-3 p-4">
           <div className="flex-shrink-0 h-12 w-12 rounded-xl overflow-hidden border border-slate-100 dark:border-slate-700 shadow">
             {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={`${base}/icon.svg`} alt="MindLoop" className="h-full w-full" />
+            <img src={`${base}/icon.svg`} alt="MindScope" className="h-full w-full" />
           </div>
 
           <div className="flex-1 min-w-0">
-            <p className="font-semibold text-slate-800 dark:text-slate-100 text-sm">Installer MindLoop</p>
+            <p className="font-semibold text-slate-800 dark:text-slate-100 text-sm">Installer MindScope</p>
             <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
               Rapide, privé, sans App Store.
             </p>

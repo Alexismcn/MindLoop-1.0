@@ -1,17 +1,17 @@
 "use client";
 
 import { useState, useRef, useEffect, useCallback } from "react";
-import { MessageCircle, X, Send, Minus } from "lucide-react";
+import { MessageCircle, X, Send, Minus, Brain, Cloud, Settings } from "lucide-react";
 import { useI18n } from "@/lib/i18n";
 import { useChatContext } from "@/lib/chat-context";
+import { useAI } from "@/lib/ai-context";
+import { generate } from "@/lib/ai-service";
 
 interface Message {
   role: "user" | "assistant";
   content: string;
+  streaming?: boolean;
 }
-
-const MISTRAL_API_KEY = "2LitVaCxXcwT2RYBz63xKEoPxGHcgAKJ";
-const MISTRAL_URL = "https://api.mistral.ai/v1/chat/completions";
 
 const SYSTEM_PROMPT = `You are MindScope Assistant, a compassionate mental health information chatbot embedded in the MindScope app — a platform offering validated self-assessment tools for mental health awareness.
 
@@ -25,7 +25,7 @@ Your role:
 Critical rules:
 - You are NOT a therapist and NEVER provide diagnosis or treatment
 - Always recommend consulting a mental health professional for personal concerns
-- If someone expresses suicidal ideation or crisis, IMMEDIATELY urge them to contact emergency services or a crisis line and stop the conversation
+- If someone expresses suicidal ideation or crisis, IMMEDIATELY urge them to contact emergency services or a crisis line
 - Never give specific medication advice
 - Keep answers clear, warm, and evidence-based
 - Respond in the same language as the user's question
@@ -33,17 +33,18 @@ Critical rules:
 Always remind users: "I'm an educational assistant, not a substitute for professional care."`;
 
 export function ChatBot() {
-  const { t } = useI18n();
-  const { chatOpen, setChatOpen } = useChatContext();
+  const { t }                       = useI18n();
+  const { chatOpen, setChatOpen }   = useChatContext();
+  const { mode, status, requestAI, ready, showSetup } = useAI();
+
   const [minimized, setMinimized] = useState(false);
-  const [messages, setMessages] = useState<Message[]>([
+  const [messages,  setMessages]  = useState<Message[]>([
     { role: "assistant", content: t.chat.welcome },
   ]);
-  const [input, setInput] = useState("");
-  const [loading, setLoading] = useState(false);
+  const [input,    setInput]   = useState("");
+  const [loading,  setLoading] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
 
-  // Detect mobile (<640px = Tailwind sm breakpoint)
   useEffect(() => {
     const check = () => setIsMobile(window.innerWidth < 640);
     check();
@@ -52,15 +53,14 @@ export function ChatBot() {
   }, []);
 
   // Desktop drag state
-  const [position, setPosition] = useState({ x: 0, y: 0 });
+  const [position,   setPosition]   = useState({ x: 0, y: 0 });
   const [isDragging, setIsDragging] = useState(false);
-  const dragOffset = useRef({ x: 0, y: 0 });
-  const panelRef = useRef<HTMLDivElement>(null);
-  const messagesEndRef = useRef<HTMLDivElement>(null);
-  const initialized = useRef(false);
-  const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const dragOffset   = useRef({ x: 0, y: 0 });
+  const panelRef     = useRef<HTMLDivElement>(null);
+  const messagesEnd  = useRef<HTMLDivElement>(null);
+  const initialized  = useRef(false);
+  const textareaRef  = useRef<HTMLTextAreaElement>(null);
 
-  // Init desktop position
   useEffect(() => {
     if (!initialized.current && !isMobile) {
       initialized.current = true;
@@ -68,17 +68,9 @@ export function ChatBot() {
     }
   }, [isMobile]);
 
-  // Scroll to bottom
-  useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages, loading]);
+  useEffect(() => { messagesEnd.current?.scrollIntoView({ behavior: "smooth" }); }, [messages, loading]);
+  useEffect(() => { if (!chatOpen) setMinimized(false); }, [chatOpen]);
 
-  // Reset minimized when closed
-  useEffect(() => {
-    if (!chatOpen) setMinimized(false);
-  }, [chatOpen]);
-
-  // Desktop drag
   const onMouseDown = useCallback((e: React.MouseEvent) => {
     if ((e.target as HTMLElement).closest("button, textarea, input")) return;
     setIsDragging(true);
@@ -87,46 +79,62 @@ export function ChatBot() {
   }, [position]);
 
   useEffect(() => {
-    const onMouseMove = (e: MouseEvent) => {
+    const onMove = (e: MouseEvent) => {
       if (!isDragging) return;
-      const newX = Math.max(0, Math.min(window.innerWidth - 400, e.clientX - dragOffset.current.x));
-      const newY = Math.max(0, Math.min(window.innerHeight - 56, e.clientY - dragOffset.current.y));
-      setPosition({ x: newX, y: newY });
+      setPosition({
+        x: Math.max(0, Math.min(window.innerWidth - 400,  e.clientX - dragOffset.current.x)),
+        y: Math.max(0, Math.min(window.innerHeight - 56,  e.clientY - dragOffset.current.y)),
+      });
     };
-    const onMouseUp = () => setIsDragging(false);
+    const onUp = () => setIsDragging(false);
     if (isDragging) {
-      window.addEventListener("mousemove", onMouseMove);
-      window.addEventListener("mouseup", onMouseUp);
+      window.addEventListener("mousemove", onMove);
+      window.addEventListener("mouseup",   onUp);
     }
-    return () => { window.removeEventListener("mousemove", onMouseMove); window.removeEventListener("mouseup", onMouseUp); };
+    return () => { window.removeEventListener("mousemove", onMove); window.removeEventListener("mouseup", onUp); };
   }, [isDragging]);
 
+  // ── Send message ──────────────────────────────────────────────────────────────
   const sendMessage = async () => {
     const text = input.trim();
     if (!text || loading) return;
-    const newMessages: Message[] = [...messages, { role: "user", content: text }];
-    setMessages(newMessages);
+
+    // If AI mode not set, open setup modal
+    if (!mode) { requestAI(); return; }
+
+    const history = messages.filter(m => !m.streaming);
+    const updated: Message[] = [...history, { role: "user", content: text }];
+    setMessages(updated);
     setInput("");
-    if (textareaRef.current) { textareaRef.current.style.height = "auto"; }
+    if (textareaRef.current) textareaRef.current.style.height = "auto";
     setLoading(true);
+
+    // Add streaming placeholder
+    setMessages(prev => [...prev, { role: "assistant", content: "", streaming: true }]);
+
     try {
-      const res = await fetch(MISTRAL_URL, {
-        method: "POST",
-        headers: { "Content-Type": "application/json", "Authorization": `Bearer ${MISTRAL_API_KEY}` },
-        body: JSON.stringify({
-          model: "mistral-small-latest",
-          messages: [
-            { role: "system", content: SYSTEM_PROMPT },
-            ...newMessages.map((m) => ({ role: m.role, content: m.content })),
-          ],
-        }),
+      const apiMsgs = [
+        { role: "system" as const, content: SYSTEM_PROMPT },
+        ...updated.map(m => ({ role: m.role as "user" | "assistant", content: m.content })),
+      ];
+
+      await generate(apiMsgs, (tok) => {
+        setMessages(prev => {
+          const last = { ...prev[prev.length - 1], content: prev[prev.length - 1].content + tok };
+          return [...prev.slice(0, -1), last];
+        });
       });
-      if (!res.ok) throw new Error("API error");
-      const data = await res.json();
-      const reply = data.choices?.[0]?.message?.content ?? t.chat.error;
-      setMessages([...newMessages, { role: "assistant", content: reply }]);
+
+      // Mark streaming done
+      setMessages(prev => {
+        const last = { ...prev[prev.length - 1], streaming: false };
+        return [...prev.slice(0, -1), last];
+      });
     } catch {
-      setMessages([...newMessages, { role: "assistant", content: t.chat.error }]);
+      setMessages(prev => {
+        const last = { ...prev[prev.length - 1], content: t.chat.error, streaming: false };
+        return [...prev.slice(0, -1), last];
+      });
     } finally {
       setLoading(false);
     }
@@ -136,26 +144,58 @@ export function ChatBot() {
     if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); sendMessage(); }
   };
 
+  // ── AI status badge ───────────────────────────────────────────────────────────
+  const aiBadge = (
+    <div className="flex items-center gap-1">
+      {mode === "local" ? (
+        <span className="flex items-center gap-1 text-[10px] font-medium text-blue-200 bg-white/10 px-1.5 py-0.5 rounded-full">
+          <Brain className="h-2.5 w-2.5" />
+          {status === "ready" ? "IA locale" : status === "downloading" ? "Chargement…" : "IA locale"}
+        </span>
+      ) : mode === "api" ? (
+        <span className="flex items-center gap-1 text-[10px] font-medium text-blue-200 bg-white/10 px-1.5 py-0.5 rounded-full">
+          <Cloud className="h-2.5 w-2.5" />
+          Mistral
+        </span>
+      ) : (
+        <span className="text-[10px] text-blue-200/60">—</span>
+      )}
+    </div>
+  );
+
+  // ── Not ready notice ──────────────────────────────────────────────────────────
+  const notReadyBanner = !ready && mode === "local" && (
+    <div className="mx-3 mt-2 px-3 py-2 rounded-xl bg-blue-50 dark:bg-blue-900/20 text-xs text-blue-700 dark:text-blue-300 flex items-center gap-2">
+      <span className="h-3 w-3 rounded-full border-2 border-blue-400 border-t-blue-700 animate-spin flex-shrink-0" />
+      <span>
+        {status === "downloading"
+          ? `Téléchargement du modèle IA…`
+          : "Chargement du modèle local…"}
+      </span>
+    </div>
+  );
+
+  // ── Input area ────────────────────────────────────────────────────────────────
   const inputArea = (
     <div className="flex items-end gap-2 p-3 border-t border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800">
       <textarea
         ref={textareaRef}
         value={input}
-        onChange={(e) => setInput(e.target.value)}
+        onChange={e => setInput(e.target.value)}
         onKeyDown={handleKeyDown}
-        placeholder={t.chat.placeholder}
+        placeholder={mode ? t.chat.placeholder : "Choisissez d'abord une IA…"}
         rows={1}
         className="flex-1 resize-none rounded-xl border border-slate-200 dark:border-slate-600 bg-slate-50 dark:bg-slate-700 px-3 py-2 text-sm text-slate-700 dark:text-slate-300 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 max-h-28 overflow-y-auto"
         style={{ cursor: "text" }}
-        onMouseDown={(e) => e.stopPropagation()}
-        onInput={(e) => {
+        onMouseDown={e => e.stopPropagation()}
+        onInput={e => {
           const el = e.currentTarget;
           el.style.height = "auto";
           el.style.height = `${Math.min(el.scrollHeight, 112)}px`;
         }}
       />
       <button
-        onClick={(e) => { e.stopPropagation(); sendMessage(); }}
+        onClick={e => { e.stopPropagation(); sendMessage(); }}
         disabled={!input.trim() || loading}
         className="flex-shrink-0 h-9 w-9 rounded-xl bg-blue-600 hover:bg-blue-700 disabled:opacity-40 disabled:cursor-not-allowed text-white flex items-center justify-center transition-colors"
         aria-label={t.chat.send}
@@ -165,6 +205,7 @@ export function ChatBot() {
     </div>
   );
 
+  // ── Messages list ─────────────────────────────────────────────────────────────
   const messagesList = (
     <div className="flex-1 overflow-y-auto p-4 space-y-3 bg-slate-50 dark:bg-slate-900/50">
       {messages.map((msg, i) => (
@@ -175,40 +216,40 @@ export function ChatBot() {
               : "bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700 rounded-bl-sm"
           }`}>
             {msg.content}
+            {msg.streaming && (
+              <span className="inline-block w-1.5 h-4 bg-current rounded-full ml-0.5 animate-pulse align-middle" />
+            )}
           </div>
         </div>
       ))}
-      {loading && (
+      {loading && !messages[messages.length - 1]?.streaming && (
         <div className="flex justify-start">
-          <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl rounded-bl-sm px-3 py-2 text-sm text-slate-500 dark:text-slate-400 italic">
-            {t.chat.thinking}
+          <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl rounded-bl-sm px-3 py-2">
+            <span className="flex gap-1">
+              {[0,1,2].map(i => (
+                <span key={i} className="w-1.5 h-1.5 bg-slate-400 rounded-full animate-bounce" style={{ animationDelay: `${i * 0.15}s` }} />
+              ))}
+            </span>
           </div>
         </div>
       )}
-      <div ref={messagesEndRef} />
+      <div ref={messagesEnd} />
     </div>
   );
 
-  // ── MOBILE: full-screen bottom sheet ──────────────────────────────────────
+  // ── MOBILE ────────────────────────────────────────────────────────────────────
   if (isMobile) {
     if (!chatOpen) return null;
     return (
       <>
-        {/* Backdrop */}
-        <div
-          className="fixed inset-0 bg-black/40 z-[9998] animate-fade-in"
-          onClick={() => setChatOpen(false)}
-        />
-        {/* Sheet */}
+        <div className="fixed inset-0 bg-black/40 z-[9998]" onClick={() => setChatOpen(false)} />
         <div
           className="fixed inset-x-0 bottom-0 z-[9999] flex flex-col rounded-t-3xl bg-white dark:bg-slate-800 shadow-2xl animate-sheet-up"
-          style={{ height: "90dvh", maxHeight: "90dvh" }}
+          style={{ height: "90dvh" }}
         >
-          {/* Drag handle */}
           <div className="flex justify-center pt-3 pb-1 flex-shrink-0">
             <div className="w-10 h-1 rounded-full bg-slate-300 dark:bg-slate-600" />
           </div>
-          {/* Header */}
           <div className="flex items-center justify-between px-5 py-3 flex-shrink-0 border-b border-slate-100 dark:border-slate-700">
             <div className="flex items-center gap-3">
               <div className="h-9 w-9 rounded-full bg-blue-600 flex items-center justify-center">
@@ -216,19 +257,25 @@ export function ChatBot() {
               </div>
               <div>
                 <p className="font-semibold text-slate-900 dark:text-slate-100 text-base leading-none">{t.chat.title}</p>
-                <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">{t.chat.subtitle}</p>
+                <div className="flex items-center gap-2 mt-0.5">
+                  <p className="text-xs text-slate-500 dark:text-slate-400">{t.chat.subtitle}</p>
+                  {mode === "local" && <span className="text-[10px] bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 px-1.5 py-0.5 rounded-full font-medium flex items-center gap-0.5"><Brain className="h-2.5 w-2.5" />locale</span>}
+                  {mode === "api"   && <span className="text-[10px] bg-slate-100 dark:bg-slate-700 text-slate-500 px-1.5 py-0.5 rounded-full font-medium flex items-center gap-0.5"><Cloud className="h-2.5 w-2.5" />Mistral</span>}
+                  {!mode            && <button onClick={requestAI} className="text-[10px] text-blue-500 underline">Configurer IA</button>}
+                </div>
               </div>
             </div>
-            <button
-              onClick={() => setChatOpen(false)}
-              className="h-8 w-8 rounded-full bg-slate-100 dark:bg-slate-700 flex items-center justify-center text-slate-500 dark:text-slate-400"
-            >
-              <X className="h-4 w-4" />
-            </button>
+            <div className="flex items-center gap-1">
+              <button onClick={requestAI} className="h-8 w-8 rounded-full bg-slate-100 dark:bg-slate-700 flex items-center justify-center text-slate-500">
+                <Settings className="h-3.5 w-3.5" />
+              </button>
+              <button onClick={() => setChatOpen(false)} className="h-8 w-8 rounded-full bg-slate-100 dark:bg-slate-700 flex items-center justify-center text-slate-500">
+                <X className="h-4 w-4" />
+              </button>
+            </div>
           </div>
-          {/* Messages */}
+          {notReadyBanner}
           {messagesList}
-          {/* Input — elevated above keyboard on iOS */}
           <div className="flex-shrink-0" style={{ paddingBottom: "env(safe-area-inset-bottom, 0px)" }}>
             {inputArea}
           </div>
@@ -237,7 +284,7 @@ export function ChatBot() {
     );
   }
 
-  // ── DESKTOP: floating bubble + draggable panel ────────────────────────────
+  // ── DESKTOP ───────────────────────────────────────────────────────────────────
   if (!chatOpen) {
     return (
       <button
@@ -257,28 +304,25 @@ export function ChatBot() {
       onMouseDown={onMouseDown}
       className="rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 overflow-hidden select-none flex flex-col"
     >
-      {/* Header */}
       <div className="flex items-center justify-between px-4 py-3 bg-blue-600 text-white flex-shrink-0">
         <div className="flex items-center gap-2">
           <MessageCircle className="h-5 w-5" />
           <div>
             <p className="text-sm font-semibold leading-none">{t.chat.title}</p>
-            <p className="text-xs opacity-80 mt-0.5">{t.chat.subtitle}</p>
+            <div className="flex items-center gap-2 mt-0.5">
+              <p className="text-xs opacity-80">{t.chat.subtitle}</p>
+              {aiBadge}
+            </div>
           </div>
         </div>
         <div className="flex items-center gap-1">
-          <button
-            onClick={(e) => { e.stopPropagation(); setMinimized(!minimized); }}
-            className="p-1.5 rounded-lg hover:bg-blue-700 transition-colors"
-            aria-label="Minimize"
-          >
+          <button onClick={e => { e.stopPropagation(); requestAI(); }} className="p-1.5 rounded-lg hover:bg-blue-700 transition-colors" title="Paramètres IA">
+            <Settings className="h-3.5 w-3.5" />
+          </button>
+          <button onClick={e => { e.stopPropagation(); setMinimized(!minimized); }} className="p-1.5 rounded-lg hover:bg-blue-700 transition-colors">
             <Minus className="h-4 w-4" />
           </button>
-          <button
-            onClick={(e) => { e.stopPropagation(); setChatOpen(false); }}
-            className="p-1.5 rounded-lg hover:bg-blue-700 transition-colors"
-            aria-label="Close"
-          >
+          <button onClick={e => { e.stopPropagation(); setChatOpen(false); }} className="p-1.5 rounded-lg hover:bg-blue-700 transition-colors">
             <X className="h-4 w-4" />
           </button>
         </div>
@@ -286,6 +330,7 @@ export function ChatBot() {
 
       {!minimized && (
         <>
+          {notReadyBanner}
           <div className="h-80 flex flex-col overflow-hidden">
             {messagesList}
           </div>

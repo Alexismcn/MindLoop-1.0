@@ -7,18 +7,20 @@ import { FooterContent } from "@/components/FooterContent";
 import { ChatBot } from "@/components/ChatBot";
 import { ChatProvider } from "@/lib/chat-context";
 import { PWAInstallBanner } from "@/components/PWAInstallBanner";
+import { AIProvider } from "@/lib/ai-context";
+import { AISetupModal } from "@/components/AISetupModal";
 
 const BASE = process.env.NEXT_PUBLIC_BASE_PATH ?? "";
 
 export const metadata: Metadata = {
-  title: "MindLoop — Santé Mentale",
+  title: "MindScope — Santé Mentale",
   description: "Évaluations de santé mentale validées, suivi de l'humeur, journal de bien-être. Gratuit, anonyme, 100% privé.",
   keywords: "santé mentale, auto-évaluation, dépression, anxiété, humeur, bien-être",
   manifest: `${BASE}/manifest.json`,
   appleWebApp: {
     capable: true,
     statusBarStyle: "black-translucent",
-    title: "MindLoop",
+    title: "MindScope",
   },
   other: {
     "mobile-web-app-capable": "yes",
@@ -66,18 +68,21 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       </head>
       <body className="min-h-screen bg-slate-50 dark:bg-slate-900 text-slate-900 dark:text-slate-100 antialiased">
         <I18nProvider>
-          <ChatProvider>
-            <Navigation />
-            <GeoModalTrigger />
-            {/* Extra bottom padding on mobile for the tab bar */}
-            <main className="pb-20 sm:pb-0">{children}</main>
-            <div className="pb-20 sm:pb-0">
-              <FooterContent />
-            </div>
-            <ChatBot />
-            {/* PWA install banner — shown intelligently from 2nd visit */}
-            <PWAInstallBanner />
-          </ChatProvider>
+          <AIProvider>
+            <ChatProvider>
+              <Navigation />
+              <GeoModalTrigger />
+              {/* Extra bottom padding on mobile for the tab bar */}
+              <main className="pb-20 sm:pb-0">{children}</main>
+              <div className="pb-20 sm:pb-0">
+                <FooterContent />
+              </div>
+              <ChatBot />
+              <AISetupModal />
+              {/* PWA install banner — shown intelligently from 2nd visit */}
+              <PWAInstallBanner />
+            </ChatProvider>
+          </AIProvider>
         </I18nProvider>
       </body>
     </html>

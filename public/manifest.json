@@ -1,6 +1,6 @@
 {
-  "name": "MindLoop — Santé Mentale",
-  "short_name": "MindLoop",
+  "name": "MindScope — Santé Mentale",
+  "short_name": "MindScope",
   "description": "Évaluations de santé mentale, suivi de l'humeur et journal de bien-être. 100% privé, anonyme.",
   "start_url": "./",
   "scope": "./",
