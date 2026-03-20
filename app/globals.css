@@ -61,6 +61,13 @@ body {
   -webkit-tap-highlight-color: transparent;
 }
 
+/* Prevent iOS auto-zoom on input focus (requires font-size >= 16px) */
+@media screen and (max-width: 640px) {
+  input, textarea, select {
+    font-size: 16px !important;
+  }
+}
+
 /* Custom scrollbar (desktop) */
 ::-webkit-scrollbar {
   width: 5px;
