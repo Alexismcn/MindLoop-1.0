@@ -53,10 +53,10 @@ export function Navigation() {
 
   return (
     <>
-      {/* ── Top nav ─────────────────────────────────────────────────────── */}
-      <nav className="sticky top-0 z-40 bg-white/80 dark:bg-slate-900/80 backdrop-blur-md border-b border-slate-200 dark:border-slate-700">
+      {/* ── Desktop top nav (hidden on mobile) ──────────────────────────── */}
+      <nav className="hidden sm:block sticky top-0 z-40 bg-white/80 dark:bg-slate-900/80 backdrop-blur-md border-b border-slate-200 dark:border-slate-700">
         <div className="max-w-6xl mx-auto px-4 sm:px-6">
-          <div className="flex items-center justify-between h-14 sm:h-16 gap-2">
+          <div className="flex items-center justify-between h-16 gap-2">
             {/* Logo */}
             <Link href="/" className="flex items-center gap-2 group flex-shrink-0">
               <div className="h-8 w-8 rounded-lg bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center shadow-sm group-hover:shadow-md transition-shadow">
@@ -67,8 +67,8 @@ export function Navigation() {
               </span>
             </Link>
 
-            {/* Desktop links */}
-            <div className="hidden sm:flex items-center gap-1 flex-1 justify-center">
+            {/* Links */}
+            <div className="flex items-center gap-1 flex-1 justify-center">
               {navLinks.map(({ href, label, icon: Icon }) => (
                 <Link
                   key={href}
@@ -102,10 +102,9 @@ export function Navigation() {
               >
                 {darkMode ? <Sun className="h-5 w-5" /> : <Moon className="h-5 w-5" />}
               </button>
-              {/* Desktop chat button */}
               <button
                 onClick={() => setChatOpen(!chatOpen)}
-                className="hidden sm:flex p-2 rounded-lg text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors relative"
+                className="flex p-2 rounded-lg text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors relative"
                 aria-label="Open chat"
               >
                 <MessageCircle className="h-5 w-5" />
@@ -117,6 +116,41 @@ export function Navigation() {
           </div>
         </div>
       </nav>
+
+      {/* ── Mobile top utility bar ───────────────────────────────────────── */}
+      <div
+        className="sm:hidden sticky top-0 z-40 bg-white/90 dark:bg-slate-900/90 backdrop-blur-md border-b border-slate-200/80 dark:border-slate-700/80 flex items-center justify-between px-4 h-12"
+        style={{ paddingTop: "env(safe-area-inset-top, 0px)" }}
+      >
+        {/* Brand */}
+        <Link href="/" className="flex items-center gap-1.5">
+          <div className="h-6 w-6 rounded-md bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center">
+            <Brain className="h-3.5 w-3.5 text-white" strokeWidth={2.5} />
+          </div>
+          <span className="font-bold text-sm text-slate-800 dark:text-slate-100 tracking-tight">
+            Mind<span className="text-blue-600 dark:text-blue-400">Scope</span>
+          </span>
+        </Link>
+
+        {/* Utility controls */}
+        <div className="flex items-center gap-1">
+          <LanguageSwitcher />
+          <button
+            onClick={() => setShowGeo(true)}
+            className="p-1.5 rounded-lg text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+            aria-label="Change location"
+          >
+            <MapPin className="h-4.5 w-4.5" />
+          </button>
+          <button
+            onClick={toggleDark}
+            className="p-1.5 rounded-lg text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+            aria-label="Toggle dark mode"
+          >
+            {darkMode ? <Sun className="h-4.5 w-4.5" /> : <Moon className="h-4.5 w-4.5" />}
+          </button>
+        </div>
+      </div>
 
       {/* ── iOS-style bottom tab bar (mobile only) ──────────────────────── */}
       <div
