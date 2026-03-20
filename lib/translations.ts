@@ -134,6 +134,7 @@ export interface Translations {
     welcome: string;
     error: string;
     thinking: string;
+    micButton: string; listeningLabel: string; micError: string; micUnsupported: string;
   };
 }
 
@@ -284,6 +285,10 @@ const en: Translations = {
     welcome: "Hi! I'm the MindScope assistant. I can answer questions about mental health, explain assessment results, or point you toward resources. How can I help you today?",
     error: "Something went wrong. Please try again.",
     thinking: "Thinking…",
+    micButton: "Voice",
+    listeningLabel: "Listening…",
+    micError: "Microphone error. Please try again.",
+    micUnsupported: "Voice input not supported in your browser",
   },
 };
 
@@ -434,6 +439,10 @@ const fr: Translations = {
     welcome: "Bonjour ! Je suis l'assistant MindScope. Je peux répondre à vos questions sur la santé mentale, expliquer les résultats de tests, ou vous orienter vers des ressources. Comment puis-je vous aider ?",
     error: "Une erreur s'est produite. Veuillez réessayer.",
     thinking: "Réflexion en cours…",
+    micButton: "Voix",
+    listeningLabel: "À l'écoute…",
+    micError: "Erreur microphone. Veuillez réessayer.",
+    micUnsupported: "L'entrée vocale n'est pas supportée dans votre navigateur",
   },
 };
 
@@ -584,6 +593,10 @@ const es: Translations = {
     welcome: "¡Hola! Soy el asistente de MindScope. Puedo responder preguntas sobre salud mental, explicar resultados de evaluaciones o guiarle hacia recursos. ¿Cómo puedo ayudarle hoy?",
     error: "Algo salió mal. Por favor, inténtelo de nuevo.",
     thinking: "Pensando…",
+    micButton: "Voz",
+    listeningLabel: "Escuchando…",
+    micError: "Error de micrófono. Por favor, inténtelo de nuevo.",
+    micUnsupported: "La entrada de voz no es compatible con su navegador",
   },
 };
 
@@ -734,6 +747,10 @@ const zh: Translations = {
     welcome: "您好！我是MindScope助手。我可以回答心理健康相关问题、解释评估结果，或为您提供资源指引。今天我能帮您什么？",
     error: "出现了问题，请重试。",
     thinking: "思考中…",
+    micButton: "语音",
+    listeningLabel: "聆听中…",
+    micError: "麦克风错误，请重试。",
+    micUnsupported: "您的浏览器不支持语音输入",
   },
 };
 

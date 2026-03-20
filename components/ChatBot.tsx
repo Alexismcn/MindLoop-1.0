@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useRef, useEffect, useCallback } from "react";
-import { MessageCircle, X, Send, Minus, Brain, Cloud, Settings, Database, DatabaseZap } from "lucide-react";
+import { MessageCircle, X, Send, Minus, Brain, Cloud, Settings, Database, DatabaseZap, Mic, MicOff } from "lucide-react";
 import { useI18n } from "@/lib/i18n";
 import { useChatContext } from "@/lib/chat-context";
 import { useAI } from "@/lib/ai-context";
@@ -98,7 +98,7 @@ function buildDataContext(): string {
 }
 
 export function ChatBot() {
-  const { t }                       = useI18n();
+  const { t, lang }                 = useI18n();
   const { chatOpen, setChatOpen }   = useChatContext();
   const { mode, status, requestAI, ready, showSetup } = useAI();
 
@@ -114,6 +114,12 @@ export function ChatBot() {
     return localStorage.getItem(DATA_ACCESS_KEY) === "true";
   });
   const [showDataHint, setShowDataHint] = useState(false);
+
+  // Voice input state
+  const [isListening, setIsListening] = useState(false);
+  const [transcript, setTranscript] = useState("");
+  const [voiceError, setVoiceError] = useState<string | null>(null);
+  const recognitionRef = useRef<any>(null);
 
   const toggleDataAccess = useCallback(() => {
     setDataAccess(prev => {
@@ -161,6 +167,71 @@ export function ChatBot() {
   useEffect(() => { messagesEnd.current?.scrollIntoView({ behavior: "smooth" }); }, [messages, loading]);
   useEffect(() => { if (!chatOpen) setMinimized(false); }, [chatOpen]);
 
+  // Initialize speech recognition
+  const initSpeechRecognition = useCallback(() => {
+    if (typeof window === "undefined") return;
+    const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+    if (!SpeechRecognition) {
+      setVoiceError(t.chat.micUnsupported);
+      return;
+    }
+
+    const recognition = new SpeechRecognition();
+    recognition.language = lang === "en" ? "en-US" : lang === "fr" ? "fr-FR" : lang === "es" ? "es-ES" : "zh-CN";
+    recognition.continuous = true;
+    recognition.interimResults = true;
+
+    recognition.onresult = (event: any) => {
+      let interim = "";
+      for (let i = event.resultIndex; i < event.results.length; i++) {
+        const transcript = event.results[i][0].transcript;
+        if (event.results[i].isFinal) {
+          setInput(prev => prev + transcript);
+        } else {
+          interim += transcript;
+        }
+      }
+      setTranscript(interim);
+    };
+
+    recognition.onerror = () => {
+      setIsListening(false);
+      setVoiceError(t.chat.micError);
+      setTimeout(() => setVoiceError(null), 3000);
+    };
+
+    recognition.onend = () => setIsListening(false);
+    recognitionRef.current = recognition;
+  }, [lang, t.chat.micError, t.chat.micUnsupported]);
+
+  // Toggle voice input
+  const toggleVoiceInput = useCallback(() => {
+    if (!recognitionRef.current) {
+      initSpeechRecognition();
+    }
+    if (!recognitionRef.current) return;
+
+    if (isListening) {
+      recognitionRef.current.stop();
+      setIsListening(false);
+      setTranscript("");
+    } else {
+      setTranscript("");
+      setVoiceError(null);
+      recognitionRef.current.start();
+      setIsListening(true);
+    }
+  }, [isListening, initSpeechRecognition]);
+
+  // Stop recording when sending message
+  const stopVoiceRecording = useCallback(() => {
+    if (recognitionRef.current && isListening) {
+      recognitionRef.current.stop();
+      setIsListening(false);
+      setTranscript("");
+    }
+  }, [isListening]);
+
   const onMouseDown = useCallback((e: React.MouseEvent) => {
     if ((e.target as HTMLElement).closest("button, textarea, input")) return;
     setIsDragging(true);
@@ -186,6 +257,7 @@ export function ChatBot() {
 
   // ── Send message ──────────────────────────────────────────────────────────────
   const sendMessage = async () => {
+    stopVoiceRecording();
     const text = input.trim();
     if (!text || loading) return;
 
@@ -298,10 +370,10 @@ export function ChatBot() {
     <div className="flex items-end gap-2 p-3 border-t border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800">
       <textarea
         ref={textareaRef}
-        value={input}
+        value={input + transcript}
         onChange={e => setInput(e.target.value)}
         onKeyDown={handleKeyDown}
-        placeholder={mode ? t.chat.placeholder : "Choisissez d'abord une IA…"}
+        placeholder={isListening ? t.chat.listeningLabel : (mode ? t.chat.placeholder : "Choisissez d'abord une IA…")}
         rows={1}
         className={`flex-1 resize-none rounded-xl border border-slate-200 dark:border-slate-600 bg-slate-50 dark:bg-slate-700 px-3 py-2 text-slate-700 dark:text-slate-300 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 max-h-28 overflow-y-auto ${
           isMobile ? "text-base" : "text-sm"
@@ -315,10 +387,24 @@ export function ChatBot() {
         }}
       />
       <button
+        onClick={e => { e.stopPropagation(); toggleVoiceInput(); }}
+        className={`flex-shrink-0 h-9 w-9 rounded-xl flex items-center justify-center transition-colors ${
+          isListening
+            ? "bg-red-600 hover:bg-red-700 text-white"
+            : "bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-400 hover:bg-slate-300 dark:hover:bg-slate-600"
+        }`}
+        aria-label={t.chat.micButton}
+        title={isListening ? t.chat.listeningLabel : t.chat.micButton}
+        onMouseDown={e => e.stopPropagation()}
+      >
+        {isListening ? <MicOff className="h-4 w-4" /> : <Mic className="h-4 w-4" />}
+      </button>
+      <button
         onClick={e => { e.stopPropagation(); sendMessage(); }}
         disabled={!input.trim() || loading}
         className="flex-shrink-0 h-9 w-9 rounded-xl bg-blue-600 hover:bg-blue-700 disabled:opacity-40 disabled:cursor-not-allowed text-white flex items-center justify-center transition-colors"
         aria-label={t.chat.send}
+        onMouseDown={e => e.stopPropagation()}
       >
         <Send className="h-4 w-4" />
       </button>
