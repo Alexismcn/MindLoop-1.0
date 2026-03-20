@@ -30,7 +30,10 @@ function emit() { _listeners.forEach(fn => fn(_status, _progress, _text)); }
 
 // ── Capability check ───────────────────────────────────────────────────────────
 export function hasWebGPU(): boolean {
-  return typeof navigator !== "undefined" && "gpu" in navigator;
+  if (typeof navigator === "undefined") return false;
+  // iOS WebGPU is too unstable for large ML inference — causes PWA crashes
+  if (/iphone|ipad|ipod/i.test(navigator.userAgent)) return false;
+  return "gpu" in navigator;
 }
 
 // ── Persisted mode ─────────────────────────────────────────────────────────────

@@ -157,8 +157,13 @@ export function Navigation() {
 
       {/* ── iOS-style bottom tab bar (mobile only) ──────────────────────── */}
       <div
-        className="sm:hidden fixed bottom-0 inset-x-0 z-40 bg-white/90 dark:bg-slate-900/90 backdrop-blur-xl border-t border-slate-200/80 dark:border-slate-700/80"
-        style={{ paddingBottom: "env(safe-area-inset-bottom, 0px)" }}
+        className="sm:hidden fixed bottom-0 inset-x-0 z-40 bg-white dark:bg-slate-900 border-t border-slate-200 dark:border-slate-700"
+        style={{
+          paddingBottom: "env(safe-area-inset-bottom, 0px)",
+          // Force GPU layer so iOS PWA keyboard doesn't displace fixed elements
+          transform: "translateZ(0)",
+          WebkitTransform: "translateZ(0)",
+        }}
       >
         <div className="flex items-stretch h-14">
           {tabItems.map(({ href, label, icon: Icon }) => {

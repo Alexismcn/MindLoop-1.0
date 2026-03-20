@@ -49,12 +49,11 @@ export function AIProvider({ children }: { children: ReactNode }) {
       setProgressText(t);
     });
 
-    // Restore saved mode and auto-load if local
+    // Restore saved mode — do NOT auto-load the local model on startup
+    // (causes PWA crashes on mobile due to memory pressure from WebGPU/WebLLM)
+    // Loading is triggered only when the user explicitly sends a message in chat.
     const saved = AI.getSavedMode();
     setModeState(saved);
-    if (saved === "local" && AI.hasWebGPU()) {
-      AI.loadLocalModel();
-    }
 
     return unsub;
   }, []);
