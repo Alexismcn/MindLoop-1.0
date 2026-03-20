@@ -294,7 +294,7 @@ export function ChatBot() {
         placeholder={mode ? t.chat.placeholder : "Choisissez d'abord une IA…"}
         rows={1}
         className="flex-1 resize-none rounded-xl border border-slate-200 dark:border-slate-600 bg-slate-50 dark:bg-slate-700 px-3 py-2 text-sm text-slate-700 dark:text-slate-300 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 max-h-28 overflow-y-auto"
-        style={{ cursor: "text" }}
+        style={{ cursor: "text", fontSize: isMobile ? "16px" : undefined }}
         onMouseDown={e => e.stopPropagation()}
         onInput={e => {
           const el = e.currentTarget;
@@ -353,7 +353,7 @@ export function ChatBot() {
         <div className="fixed inset-0 bg-black/40 z-[9998]" onClick={() => setChatOpen(false)} />
         <div
           className="fixed inset-x-0 bottom-0 z-[9999] flex flex-col rounded-t-3xl bg-white dark:bg-slate-800 shadow-2xl animate-sheet-up"
-          style={{ height: "90dvh" }}
+          style={{ height: "92dvh", maxHeight: "92dvh" }}
         >
           <div className="flex justify-center pt-3 pb-1 flex-shrink-0">
             <div className="w-10 h-1 rounded-full bg-slate-300 dark:bg-slate-600" />
@@ -395,7 +395,7 @@ export function ChatBot() {
           </div>
           {notReadyBanner}
           {messagesList}
-          <div className="flex-shrink-0" style={{ paddingBottom: "env(safe-area-inset-bottom, 0px)" }}>
+          <div className="flex-shrink-0" style={{ paddingBottom: "max(env(safe-area-inset-bottom, 0px), 8px)" }}>
             {inputArea}
           </div>
         </div>
